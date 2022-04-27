@@ -1,0 +1,19 @@
+# Ignore the build and dist folder
+build
+dist
+
+# Ignore .clangd .vscide
+.vscode
+.clangd
+
+# Ignore .sublime-project 
+fritz.sublime-project
+
+# Ignore .sublime-workspace
+fritz.sublime-workspace
+
+# Ignore compile_commands.json
+compile_commands.json
+
+# Ignore the resources folder
+res
