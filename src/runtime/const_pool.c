@@ -120,6 +120,7 @@ void constant_pool_create(ConstantPool *p, ConstantPoolCreator *c) {
 				v.s_value = c.s_value;
 				break;
 			}
+			p->consts[k] = v;
 		}
 	}
 }
