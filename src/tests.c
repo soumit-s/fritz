@@ -7,6 +7,7 @@
 #include "runtime/const_pool.h"
 #include "runtime/instance.h"
 #include "runtime/exec.h"
+#include "runtime/utils.h"
 
 #include <stdio.h>
 
@@ -113,6 +114,8 @@ int test_compiler() {
 
 	// Add the main source file.
 	src_manager_add(&instance->src_manager, src);
+
+	printf("-----------------------------------\n");
 
 	// Create the main thread to exectute the bytecode.
 	instance_exec(instance);
