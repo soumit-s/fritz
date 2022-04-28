@@ -2,6 +2,8 @@
 
 #include "common.h"
 #include "str.h"
+#include "runtime/block.h"
+#include "runtime/value.h"
 
 typedef enum {
 	VALUE_TYPE_OBJECT,
@@ -9,9 +11,18 @@ typedef enum {
 	VALUE_TYPE_FLOAT,
 	VALUE_TYPE_BOOLEAN,
 	VALUE_TYPE_STRING,
+	VALUE_TYPE_BLOCK,
 } VALUE_TYPE;
 
-typedef struct fz_value Value;
+#define VALUE_TYPE_PREFIXES \
+	X(OBJECT, object, Object*, o_ptr) \
+	X(INT, int, FzInt, i_value) \
+	X(FLOAT, float, FzFloat, f_value) \
+	X(BOOLEAN, bool, FzBool, b_value) \
+	X(STRING, string, FzString, s_value) \
+	X(BLOCK, block, Block, bl_value)
+
+
 typedef struct fz_object_property ObjectProperty;
 typedef struct fz_object Object;
 
@@ -23,6 +34,7 @@ struct fz_value {
 		FzBool b_value;
 		FzString s_value;
 		Object *o_ptr;
+		Block bl_value;
 	};
 };
 
@@ -33,7 +45,15 @@ enum {
 };
 
 extern int compare_values(Value, Value);
+extern int value_equals(Value, Value);
 
+extern void value_log(Value);
+
+// Declaration for functions value_string, ... etc.
+// Used to create values out of primitives easily.
+#define X(a, b, c, d) extern Value value_##b(c);
+	VALUE_TYPE_PREFIXES
+#undef X
 
 struct fz_object_property {
 	Value key;
@@ -65,6 +85,8 @@ extern void object_init(Object*);
 
 extern void object_add_property(Object*, ObjectProperty);
 
+extern void object_add_properties(Object*, ObjectProperty*, size_t);
+
 extern int object_search_nth_property(Object*, Value, int);
 
 #define object_search_property(o, v) object_search_nth_property(o, v, 1)
@@ -72,5 +94,9 @@ extern int object_search_nth_property(Object*, Value, int);
 // Returns a pointer to the object property with the given
 // key, if found. It returns NULL otherwise.
 extern ObjectProperty* object_get_property(Object *o, Value k);
+
+extern void object_set_property(Object *o, Value k, Value v);
+
+extern void object_log(Object*);
 
 
