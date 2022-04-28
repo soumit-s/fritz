@@ -1,5 +1,7 @@
 #include "runtime/bcode.h"
 #include "runtime/const_pool.h"
+#include "runtime/utils.h"
+
 #include <string.h>
 #include <stdio.h>
 
