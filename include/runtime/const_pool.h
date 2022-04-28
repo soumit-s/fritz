@@ -2,7 +2,7 @@
 
 #include "common.h"
 #include "str.h"
-#include "runtime/obj.h"
+#include "runtime/value.h"
 
 typedef struct fz_constant Constant;
 typedef struct fz_constant_pool_creator_list ConstantPoolCreatorList;
