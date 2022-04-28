@@ -31,10 +31,12 @@ extern void stack_destroy(Stack*);
 // the stack pointer. It takes a Stack object
 // and a Value object. 
 // NOTE: It does not take pointers.
-#define STACK_PUSH(s, v) (*s.top_ptr++ = v) 
+#define STACK_PUSH(s, v) (*(s).top_ptr++ = (v)) 
 
 // Pops a Value from the stack and increments
 // the stack pointer. It takes a Stack object
 // and returns a Value object.
-#define STACK_POP(s) (*--s.top_ptr)
+#define STACK_POP(s) (*--(s).top_ptr)
+
+#define STACK_GET_FROM_TOP(s, n) (*(s.top_ptr - n))
 
