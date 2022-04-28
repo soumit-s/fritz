@@ -22,3 +22,5 @@ extern long string_octal_to_long(string);
 extern long string_hex_to_long(string);
 extern long string_bin_to_long(string);
 extern double string_to_double(string);
+
+extern string string_to_string(string);
