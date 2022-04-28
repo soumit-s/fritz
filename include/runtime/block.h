@@ -1,5 +1,6 @@
 #pragma once
 
+#include "runtime/const_pool.h"
 #include "runtime/bcode.h"
 
 // Id of a Source Object.
