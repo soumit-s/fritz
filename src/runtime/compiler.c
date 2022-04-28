@@ -49,15 +49,23 @@ void instance_compile_literal(Instance *i, AstNode n, BcodeBuffer *b,
     c.f_value = string_to_double(t.value);
     c.type = CONSTANT_TYPE_FLOAT;
 
-  case TOKEN_TYPE_LITERAL_STRING:
+  case TOKEN_TYPE_LITERAL_STRING: {
+    string str;
+
     // Decrease the length by two to eliminate the opening
     // and closing quotes.
-    c.s_value.length = t.value.length - 2;
+    str.length = t.value.length-2;
 
     // Skipping the opening quote of the string.
-    c.s_value.value = t.value.value + 1;
+    str.value = t.value.value + 1;
+
+    // Create a new string with the escape sequences
+    // replaced by the characters that they represent.
+    c.s_value = string_to_string(str);
 
     c.type = CONSTANT_TYPE_STRING;
+    break;
+  }
   case TOKEN_TYPE_LITERAL_BOOLEAN:
     c.b_value = string_eqc(t.value, "true");
     c.type = CONSTANT_TYPE_BOOLEAN;
