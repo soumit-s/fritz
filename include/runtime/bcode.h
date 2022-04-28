@@ -1,7 +1,6 @@
 #pragma once
 
 #include "common.h"
-#include "const_pool.h"
 
 typedef struct fz_bcode_buffer_fragment BcodeBufferFragment;
 typedef struct fz_bcode_buffer_iterator BcodeBufferIterator;
@@ -47,7 +46,6 @@ struct fz_bcode {
 
 extern void bcode_buffer_to_bcode(BcodeBuffer*, Bcode*);
 
-extern void bcode_dump(Bcode*, ConstantPool*);
 
 typedef struct fz_bcode_meta_data BcodeMetaData;
 struct fz_bcode_meta_data {
