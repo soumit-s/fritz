@@ -143,3 +143,42 @@ double string_to_double(string s) {
 
   return msb * n;
 }
+
+string string_to_string(string s) {
+  string ns;
+
+  size_t c=0;
+  for (size_t i=0; i < s.length; ++i, ++c) {
+    if (s.value[i] == '\\' && i < s.length-1) {
+      switch (s.value[i+1]) {
+      case 'n':
+      case 't':
+        i+=1;
+        break;
+      }
+    } 
+  }
+
+  char *str = calloc(c, sizeof(char));
+
+  ns.value = str;
+  ns.length = c;
+
+  c = 0;
+  for (size_t i=0; i < s.length; ++i, ++c) {
+    if (s.value[i] == '\\' && i < s.length-1) {
+      char ch = s.value[i+1];
+      if (ch == 'n') {
+        str[c] = '\n';
+        i++; 
+      } else if (ch == 't') {
+        str[c] = '\t';
+        i++;
+      }
+    } else {
+      str[c] = s.value[i];
+    }
+  }
+
+  return ns;
+}
