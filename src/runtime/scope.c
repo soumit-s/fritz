@@ -4,11 +4,9 @@
 
 const char *SCOPE_PROP_NAME = "scope";
 const char *GLOBAL_PROP_NAME = "global";
+const char *ORIGIN_PROP_NAME = "origin";
 
-Object* scope_create(Object *p, Object *g) {
-	Object *o = calloc(1, sizeof(Object));
-	object_init(o);
-
+void scope_create(Object *o, Object *p, Object *g) {
 	// A scope must contain a property named scope
 	// which is a reference to itself.
 	ObjectProperty scope;
@@ -20,7 +18,7 @@ Object* scope_create(Object *p, Object *g) {
 	scope.value.type = VALUE_TYPE_OBJECT;
 	scope.value.o_ptr = o;
 
-	object_add_property(o, scope);
+	object_set_property(o, scope);
 
 	// A scope must contain a reference to a 
 	// global scope. If it does not have a global
@@ -34,12 +32,17 @@ Object* scope_create(Object *p, Object *g) {
 	global.value.type = VALUE_TYPE_OBJECT;
 	global.value.o_ptr = g;
 
-	object_add_property(o, global);
+	object_set_property(o, global);
 
 	// A scope must contain a reference to a 
 	// parent scope if it has any.
+	ObjectProperty origin;
+	object_property_init(&origin);
 
-	return o;
+	origin.key = value_string(to_string(ORIGIN_PROP_NAME));
+	origin.value = value_object(p);
+
+	object_set_property(o, origin);
 }
 
 ObjectProperty* scope_get_property(Object* o, Value k) {
@@ -57,7 +60,7 @@ ObjectProperty* scope_get_property(Object* o, Value k) {
 
 	Value parent_prop_name;
 	parent_prop_name.type = VALUE_TYPE_STRING;
-	parent_prop_name.s_value = to_string("parent");
+	parent_prop_name.s_value = to_string(ORIGIN_PROP_NAME);
 
 	Object *co = o;
 
