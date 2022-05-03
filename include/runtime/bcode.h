@@ -5,6 +5,7 @@
 typedef struct fz_bcode_buffer_fragment BcodeBufferFragment;
 typedef struct fz_bcode_buffer_iterator BcodeBufferIterator;
 typedef struct fz_bcode_buffer BcodeBuffer;
+typedef struct fz_bcode_buffer_label BcodeBufferLabel;
 
 struct fz_bcode_buffer_fragment {
 	uint8_t *ptr;
@@ -37,6 +38,15 @@ extern void bcode_buffer_destroy(BcodeBuffer*);
 extern BcodeBufferIterator* bcode_buffer_end(BcodeBuffer*);
 extern void bcode_buffer_append(BcodeBuffer*, const uint8_t*, size_t);
 
+struct fz_bcode_buffer_label {
+	BcodeBufferIterator *iter;
+	size_t pos;
+};
+
+extern BcodeBufferLabel bcode_buffer_pin_label(BcodeBuffer*);
+
+extern size_t bcode_buffer_label_calculate_offset(BcodeBufferLabel, BcodeBufferLabel);
+
 typedef struct fz_bcode Bcode;
 
 struct fz_bcode {
@@ -45,6 +55,8 @@ struct fz_bcode {
 };
 
 extern void bcode_buffer_to_bcode(BcodeBuffer*, Bcode*);
+
+extern const char* bcode_opcode_to_inst(const uint8_t*);
 
 
 typedef struct fz_bcode_meta_data BcodeMetaData;
@@ -65,6 +77,8 @@ DECLARE_OPCODE(BLOCK_IMPLICIT_START);
 DECLARE_OPCODE(BLOCK_IMPLICIT_END);
 DECLARE_OPCODE(BLOCK_EXPLICIT_START);
 DECLARE_OPCODE(BLOCK_EXPLICIT_END);
+DECLARE_OPCODE(BLOCK_NOEXEC_START);
+DECLARE_OPCODE(BLOCK_NOEXEC_END);
 
 DECLARE_OPCODE(ADD);
 DECLARE_OPCODE(SUB);
@@ -72,10 +86,21 @@ DECLARE_OPCODE(MUL);
 DECLARE_OPCODE(DIV);
 DECLARE_OPCODE(MOD);
 
-// Instruction: set
-// Syntax set <dst(const-id | ref)>
-// Pops the value onto the destination <dst>.
-DECLARE_OPCODE(SET);
+DECLARE_OPCODE(GT);
+DECLARE_OPCODE(LT);
+DECLARE_OPCODE(GTE);
+DECLARE_OPCODE(LTE);
+DECLARE_OPCODE(EQ);
+DECLARE_OPCODE(NEQ);
+
+// Instruction: set.object
+// Syntax set.object
+// STACK: key | object | value | ....
+//          ^
+//         top
+// 
+// Operation: object[key] = value
+DECLARE_OPCODE(SET_OBJECT);
 
 // Instruction: set.scope
 // Syntax: set.scope <dst(const-id | ref)>
@@ -87,6 +112,36 @@ DECLARE_OPCODE(SET);
 // set scope.<dst>
 DECLARE_OPCODE(SET_SCOPE);
 
+// Instruction: set.scope.stack
+// Syntax: set.scope.stack
+// Similar to set.scope except that the destination
+// is obtained from the stack.
+// | key | value | --->  
+//    ^
+//  (dst)
+DECLARE_OPCODE(SET_SCOPE_STACK);
+
+// Instruction: set.scope.null
+// Syntax: set.scope.null <dst(const-id | ref)>
+// Declares a new variable in the scope and sets its
+// value to null.
+DECLARE_OPCODE(SET_SCOPE_NULL);
+
+// Instruction: set.scope.mut
+// Syntax: set.scope.mut <dst(const-id | ref)>
+// Declares a new mutable variable in the current
+// scope.
+DECLARE_OPCODE(SET_SCOPE_MUT);
+
+// Instruction: get.object
+// Syntax: get.object
+// Searches for a property inside an object
+// and returns its value if found. If not
+// found then it throws an error. The 
+// object must be pushed onto the stack
+// first and then the name of the property
+// to search for.
+DECLARE_OPCODE(GET_OBJECT);
 
 // Instruction: get.constant
 // Syntax: get.constant <const-id>
@@ -100,20 +155,154 @@ DECLARE_OPCODE(GET_CONSTANT);
 // The variable name must be a string constant id.
 DECLARE_OPCODE(GET_SCOPE);
 
-// Instruction: invoke
-// Syntax: invoke.constant
+// Instruction: invoke.constant
+// Syntax: invoke.constant <num-args(FzInt)>
 // Calls a function with a constant number of parameters that 
 // can be estimated at compile-time. 
 DECLARE_OPCODE(INVOKE_CONSTANT);
 
+// Instruction: invoke.constant.async
+// Syntax: invoke.constant.async <num-args(FzInt)>
+// Similar to invoke.constant except that the
+// function is executed in a thread.
+DECLARE_OPCODE(INVOKE_CONSTANT_ASYNC);
+
+// Instruction: method.create
+// Syntax: method.create
+// It takes the top two elements on the stack and uses them to 
+// create a function object which it then pushes back  onto the 
+// stack.
+// The top two stack elements must be a block and an object
+// definig the parameters and other info about the function.
+DECLARE_OPCODE(METHOD_CREATE);
+
+// Instruction: object.create
+// Syntax: object.create
+// Creates an empty object and pushes it onto the stack.
+DECLARE_OPCODE(OBJECT_CREATE);
+
+// Instruction: get.null
+// Syntax: get.null
+// Pushes a null object onto the stack.
+DECLARE_OPCODE(GET_NULL);
+
+// Instruction: return
+// Syntax: return
+// Terminates the execution of the block and
+// return the top most element on the stack.
+DECLARE_OPCODE(RETURN);
+
+// Instruction: return.null
+// Syntax: return.null
+// Similar to return except that in this case
+// the return value is null irrespective of the
+// last value on the stack.
+DECLARE_OPCODE(RETURN_NULL);
+
+// Instruction: jump.if
+// Syntax: jump.if <offset>
+// Jumps to the instruction pointed to by
+// ip + offset, where ip = instruction pointer.
+DECLARE_OPCODE(JUMP_IF);
+
+// Instruction: jump.nif
+// Syntax: jump.nif <offset>
+// Similar to jump.if except that it jumps only 
+// if the value is false.
+DECLARE_OPCODE(JUMP_NIF);
+
+// Instruction: jump
+// Syntax: jump <offset>
+// Unconditional jump within the current
+// block. Instruction Pointer is incremented
+// by offset
+DECLARE_OPCODE(JUMP);
+
+// Instruction: jump.back
+// Syntax: jump.back <offset>
+// Instruction Pointer gets decremented by
+// offset.
+DECLARE_OPCODE(JUMP_BACK);
+
+// Instruction: jump.if
+// Syntax: jump.if <offset>
+// Similar to jump.if except that it does not
+// pop the value from the stack.
+DECLARE_OPCODE(JUMP_IF_NOPOP);
+
+// Instruction: jump.nif
+// Syntax: jump.nif <offset>
+// Similar to jump.nif except that
+// it does not pop the value from the 
+// stack.
+DECLARE_OPCODE(JUMP_NIF_NOPOP);
+
+// Instruction: pop
+// Syntax: pop
+// Pops the topmost element of the
+// stack.
+DECLARE_OPCODE(POP);
+
+
+// Instruction: stack.dup.top
+// Syntax: stack.dup.top
+// Pushes the topmost element on the
+// stack onto the stack.
+DECLARE_OPCODE(STACK_DUP_TOP);
+
+// Instruction: classify
+// Syntax: classify
+// Converts an object into a class.
+// Stack structure
+// Before:
+//     | name(v) | body(o) | super(o) | ----->
+// After:
+//     | name(v) | <classified-object>(o) | ---->
+// Note how the object containing info about base classes
+// has been removed. Here (o) means object, and (v) means
+// any value.
+DECLARE_OPCODE(CLASSIFY);
+
+
 #define INST_TO_OPCODE_MAP \
+	X(GET_OBJECT, "get.object") \
 	X(GET_CONSTANT, "get.constant") \
 	X(GET_SCOPE, "get.scope") \
-	X(SET, "set") \
+	X(SET_OBJECT, "set.object") \
 	X(SET_SCOPE, "set.scope") \
+	X(SET_SCOPE_STACK, "set.scope.stack") \
+	X(SET_SCOPE_MUT, "set.scope.mut") \
+	X(SET_SCOPE_NULL, "set.scope.null") \
 	X(INVOKE_CONSTANT, "invoke.constant") \
+	X(INVOKE_CONSTANT_ASYNC, "invoke.constant.async") \
 	X(ADD, "add") \
 	X(SUB, "sub") \
 	X(DIV, "div") \
 	X(MUL, "mul") \
-	X(MOD, "mod")
+	X(MOD, "mod") \
+	X(GT, "gt") \
+	X(LT, "lt") \
+	X(GTE, "gte") \
+	X(LTE, "lte") \
+	X(EQ, "eq") \
+	X(NEQ, "neq") \
+	X(GET_NULL, "get.null") \
+	X(METHOD_CREATE, "method.create") \
+	X(OBJECT_CREATE, "object.create") \
+	X(BLOCK_EXPLICIT_START, "block.explicit.start") \
+	X(BLOCK_EXPLICIT_END, "block.explicit.end") \
+	X(BLOCK_IMPLICIT_START, "block.implcit.start") \
+	X(BLOCK_IMPLICIT_END, "block.implicit.end") \
+	X(BLOCK_NOEXEC_START, "block.noexec.start") \
+	X(BLOCK_NOEXEC_END, "block.noexec.end") \
+	X(RETURN, "return") \
+	X(RETURN_NULL, "return.null") \
+	X(JUMP, "jump") \
+	X(JUMP_IF, "jump.if") \
+	X(JUMP_NIF, "jump.nif") \
+	X(JUMP_BACK, "jump.back") \
+	X(JUMP_IF_NOPOP, "jump.if.nopop") \
+	X(JUMP_NIF_NOPOP, "jump.nif.nopop") \
+	X(POP, "pop") \
+	X(STACK_DUP_TOP, "stack.dup.top") \
+	X(CLASSIFY, "classify")
