@@ -76,6 +76,14 @@ int constant_pool_creator_search(ConstantPoolCreator *p, Constant c, CONSTANT_ID
 	return FALSE;
 }
 
+CONSTANT_ID constant_pool_creator_append_constant(ConstantPoolCreator *p, Constant c) {
+	CONSTANT_ID cid;
+	if (!constant_pool_creator_search(p, c, &cid)) {
+		cid = constant_pool_creator_add_constant(p, c);
+	}
+	return cid;
+}
+
 void constant_pool_init(ConstantPool *p) {
 	p->consts = NULL;
 	p->n_consts = 0;

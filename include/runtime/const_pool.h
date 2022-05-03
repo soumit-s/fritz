@@ -43,6 +43,8 @@ typedef unsigned long CONSTANT_ID;
 extern void constant_pool_creator_init(ConstantPoolCreator*);
 extern CONSTANT_ID constant_pool_creator_add_constant(ConstantPoolCreator*, Constant);
 extern int constant_pool_creator_search(ConstantPoolCreator*, Constant, CONSTANT_ID*);
+extern CONSTANT_ID constant_pool_creator_append_constant(ConstantPoolCreator*, Constant);
+
 
 struct fz_constant_pool_entry {
 	CONSTANT_TYPE type;
