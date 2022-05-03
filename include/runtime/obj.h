@@ -95,7 +95,9 @@ extern int object_search_nth_property(Object*, Value, int);
 // key, if found. It returns NULL otherwise.
 extern ObjectProperty* object_get_property(Object *o, Value k);
 
-extern void object_set_property(Object *o, Value k, Value v);
+extern void object_set_property (Object *o, ObjectProperty);
+
+extern void object_set_property_value(Object *o, Value k, Value v);
 
 extern void object_log(Object*);
 

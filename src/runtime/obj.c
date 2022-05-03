@@ -56,10 +56,20 @@ ObjectProperty* object_get_property(Object *o, Value k) {
 	return i == -1 ? NULL : &o->props[i]; 
 }
 
-void object_set_property(Object *o, Value k, Value v) {
+void object_set_property(Object *o, ObjectProperty prop) {
+	ObjectProperty *p = object_get_property(o, prop.key);
+	if (p == NULL) {
+		object_add_property(o, prop); 
+	} else {
+		*p = prop;
+	}
+}
+
+void object_set_property_value(Object *o, Value k, Value v) {
 	ObjectProperty *p = object_get_property(o, k);
 	if (p == NULL) {
 		ObjectProperty x;
+		object_property_init(&x);
 		x.key = k;
 		x.value = v;
 		object_add_property(o, x); 
@@ -93,7 +103,10 @@ int value_equals(Value v1, Value v2) {
 	return FALSE;
 }
 
-void value_log(Value v) {
+void value_log_depth(Value, int);
+void object_log_depth(Object*, int);
+
+void value_log_depth(Value v, int depth) {
 	switch (v.type) {
 		case VALUE_TYPE_FLOAT:
 			printf("%lf", v.f_value);
@@ -109,7 +122,11 @@ void value_log(Value v) {
 				printf("%c", v.s_value.value[i]);
 			break;
 		case VALUE_TYPE_OBJECT:
-			printf("[Object]");
+			if (depth > 0) { 
+				object_log_depth(v.o_ptr, depth-1);
+			} else {
+				printf("[Object]");
+			}
 			break;
 		case VALUE_TYPE_BLOCK:
 			printf("[Block]");
@@ -117,14 +134,34 @@ void value_log(Value v) {
 	}
 }
 
+void value_log(Value v) {
+	value_log_depth(v, 3);
+}
 
-void object_log(Object *o) {
+
+void object_log_depth(Object *o, int depth) {
+	if (o == NULL) {
+		printf("null");
+		return;
+	}
 	printf("{ ");
 	for (size_t i=0; i < o->n_props; ++i) {
-		value_log(o->props[i].key);
+		value_log_depth(o->props[i].key, depth-1);
 		printf(": ");
-		value_log(o->props[i].value);
-		printf(", ");
+		Value v = o->props[i].value;
+		if (v.o_ptr == o)
+			printf("[self]");
+		else
+			value_log_depth(o->props[i].value, depth-1);
+
+		if (i < o->n_props-1)
+			printf(", ");
+		else
+			printf(" ");
 	}
 	printf("}");
 } 
+
+void object_log(Object *o) {
+	object_log_depth(o, 3);
+}
