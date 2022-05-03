@@ -1,4 +1,5 @@
 #include "pre/ast.h"
+#include "pre/meta.h"
 #include "pre/tok.h"
 #include <stdio.h>
 
@@ -97,17 +98,34 @@ void ast_node_destroy(AstNode n) {
 	}
 }
 
-void ast_dump_node(AstNode n, int indent) {
-	for (size_t i=0; i < indent; ++i)
+void _print_spaces(size_t n) {
+	for (size_t i=0; i < n; ++i)
 		printf("  ");
+}
+
+void ast_dump_node(AstNode n, int indent) {
+	_print_spaces(indent);
 
 	if (n.type == NODE_TYPE_CONT_CALL) {
 		printf("<func_call>\n");
 	} else {	
 		for (size_t i=0; i < n.value.value.length; ++i)
 			printf("%c", n.value.value.value[i]);
+		//printf(" %d", n.type == NODE_TYPE_TOKEN);
 		printf("\n");
 	}
+
+	if (n.type == NODE_TYPE_KEYWORD && 
+			string_eqc(n.value.value, "if")) {
+		MetaDataIf m = *(MetaDataIf*)n.meta_data;
+		ast_dump_node(m.if_node, indent+1);
+
+		for (size_t k=0; k < m.n_elif; ++k)
+			ast_dump_node(m.elif_nodes[k], indent+1);
+
+		if (m.has_else)
+			ast_dump_node(m.else_node, indent+1);
+	} 
 
 	if (n.children != NULL) {
 		for (size_t i=0; i < n.n_children; ++i) {
