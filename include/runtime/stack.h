@@ -38,5 +38,8 @@ extern void stack_destroy(Stack*);
 // and returns a Value object.
 #define STACK_POP(s) (*--(s).top_ptr)
 
-#define STACK_GET_FROM_TOP(s, n) (*(s.top_ptr - n))
+#define STACK_GET_FROM_TOP(s, n) (*(s.top_ptr - (n)))
+#define STACK_GET_FROM_TOP_PTR(s, n) (s.top_ptr - (n))
+
+#define STACK_SET_TOP(s, t) (s.top_ptr = (t))
 
