@@ -2,9 +2,9 @@
 
 #include "runtime/obj.h"
 
-typedef void (*NativeFunc)(Value*, size_t);
+typedef Value (*NativeFunc)(Value*, size_t);
 
-extern void func_create(Object *o);
+extern void func_create(Object *o, Object *params, Block b, Object *scope);
 
 extern void func_set_block(Object*, Block);
 
