@@ -3,6 +3,12 @@
 #include "runtime/const_pool.h"
 #include "runtime/bcode.h"
 
+typedef enum {
+  BLOCK_TYPE_EXPLICIT,
+  BLOCK_TYPE_IMPLICIT,
+  BLOCK_TYPE_NOEXEC
+} BLOCK_TYPE;
+
 // Id of a Source Object.
 typedef size_t SOURCE_ID;
 
@@ -25,6 +31,8 @@ typedef struct fz_block Block;
 // A block represents a segment of a
 // source that can be executed and has a local scope.
 struct fz_block {
+  BLOCK_TYPE type;
+
   const uint8_t *start_ptr;
   const uint8_t *end_ptr;
 
