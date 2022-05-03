@@ -2,7 +2,8 @@
 
 void frame_init(Frame *f) {
 	// Create a new scope.
-	f->scope = NULL;	
+	f->read_scope = NULL;
+	f->write_scope = NULL;	
 	f->base_ptr = NULL;
 	f->ip = NULL;
 }

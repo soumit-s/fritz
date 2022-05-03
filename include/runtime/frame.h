@@ -19,8 +19,11 @@ struct fz_frame {
 	// The stack base pointer.
 	Value *base_ptr;
 
-	// The scope object for holding local variables.
-	Object *scope;
+	// The scope object to read from.
+	Object *read_scope;
+
+	// The scope object to write to.
+	Object *write_scope;
 
 	// The block for which the frame was created.
 	Block block;
