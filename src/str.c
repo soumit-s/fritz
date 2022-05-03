@@ -153,6 +153,8 @@ string string_to_string(string s) {
       switch (s.value[i+1]) {
       case 'n':
       case 't':
+      case '\'':
+      case '\"':
         i+=1;
         break;
       }
@@ -173,6 +175,12 @@ string string_to_string(string s) {
         i++; 
       } else if (ch == 't') {
         str[c] = '\t';
+        i++;
+      } else if (ch == '\"') {
+        str[c] = '\"';
+        i++;
+      } else if (ch == '\'') {
+        str[c] = '\'';
         i++;
       }
     } else {
