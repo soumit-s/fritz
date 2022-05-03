@@ -13,22 +13,22 @@ enum {
   TYPE_DIGIT,
 };
 
-const int NUM_KEYWORDS = 1;
-const char *KEYWORDS[] = {"let"};
+const int NUM_KEYWORDS = 8;
+const char *KEYWORDS[] = {"say", "return", "method", "if", "elif", "else", "while", "class"};
 
-const int NUM_OPERATORS = 22;
+const int NUM_OPERATORS = 23;
 const char *OPERATORS[] = {
     "=",  "+",  "-",  "/", "*",   "%",  ">", "<", ">>", "<<", 
     "==", "<=", ">=", "!=", "and", "or", "!", ".", "<-", "<|", 
-    "|", "&"};
+    "|", "&", ":"};
 
 const int NUM_UNARY_OPERATORS = 1;
 const char *UNARY_OPERATORS[] = {"!"};
 
-const int NUM_BINARY_OPERATORS = 21;
+const int NUM_BINARY_OPERATORS = 22;
 const char *BINARY_OPERATORS[] = {
     "=",  "+",  "-",  "/", "*",   "%",  ">", "<", ">>",
-    "<<", "==", "<=", ">=", "!=", "and", "or", ".", "<-", "<|"};
+    "<<", "==", "<=", ">=", "!=", "and", "or", ".", "<-", "<|", ":", "|", "&"};
 
 const int NUM_SEPARATORS = 1;
 const char *SEPARATORS[] = {","};
@@ -208,7 +208,12 @@ size_t extract_number(const char *s, size_t l, size_t i, TOKEN_TYPE *tp) {
     *tp = TOKEN_TYPE_LITERAL_INT_HEX;
     break;
   case 'o':
-    *tp = TOKEN_TYPE_LITERAL_INT_OCTAL;
+    // If the number is only zero then it is not
+    // octal.
+    if (j == i+1)
+      *tp = TOKEN_TYPE_LITERAL_INT_DECIMAL;
+    else
+      *tp = TOKEN_TYPE_LITERAL_INT_OCTAL;
     break;
   case 'b':
     *tp = TOKEN_TYPE_LITERAL_INT_BINARY;
