@@ -11,6 +11,12 @@ string to_string(const char *v) {
   return s;
 }
 
+char* to_cstring(string s) {
+  char *str = calloc(s.length+1, sizeof(char));
+  memcpy(str, s.value, s.length);
+  return str;
+}
+
 int string_eq(string s1, string s2) {
   if (s1.length != s2.length) {
     return FALSE;
