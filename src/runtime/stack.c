@@ -13,7 +13,7 @@ void stack_create(Stack *s, size_t n) {
 }
 
 void stack_destroy(Stack *s) {
-	if (s->values == NULL) {
+	if (s->values != NULL) {
 		free(s->values);
 	}
 }
