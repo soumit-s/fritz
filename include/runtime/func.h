@@ -2,7 +2,9 @@
 
 #include "runtime/obj.h"
 
-typedef Value (*NativeFunc)(Value*, size_t);
+extern const Value FUNC_ME_PROP_NAME;
+
+typedef Value (*NativeFunc)(Object*, Value, Value*, size_t);
 
 extern void func_create(Object *o, Object *params, Block b, Object *scope);
 
