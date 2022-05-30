@@ -7,6 +7,14 @@ void constant_pool_creator_init(ConstantPoolCreator *c) {
 	c->lists = NULL;
 }
 
+void constant_pool_creator_destroy(ConstantPoolCreator *c) {
+	for (size_t i=0; i < c->n_lists; ++i) {
+		ConstantPoolCreatorList l = c->lists[i];
+		free(l.consts);
+	}
+	free(c->lists);
+}
+
 CONSTANT_ID constant_pool_creator_add_constant(ConstantPoolCreator *p, Constant c) {
 	ConstantPoolCreatorList l;
 	if (p->n_lists != 0)
