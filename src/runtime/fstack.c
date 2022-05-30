@@ -13,7 +13,7 @@ void frame_stack_create(FrameStack *s, size_t n) {
 }
 
 void frame_stack_destroy(FrameStack *s) {
-	if (s->frames == NULL) {
+	if (s->frames != NULL) {
 		free(s->frames);
 	}
 }
