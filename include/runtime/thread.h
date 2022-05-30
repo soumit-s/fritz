@@ -8,6 +8,13 @@
 typedef int THREAD_ID;
 typedef struct fz_thread Thread;
 
+typedef enum {
+	THREAD_STATUS_INFANT,
+	THREAD_STATUS_ACTIVE,
+	THREAD_STATUS_DEAD,
+	THREAD_STATUS_UNKNOWN,
+} THREAD_STATUS;
+
 
 struct fz_thread {
 	// The thread ID.
@@ -27,6 +34,9 @@ struct fz_thread {
 
 	// Frame stack.
 	FrameStack fstack;
+
+	// Thread Status.
+	THREAD_STATUS status;
 };
 
 extern void thread_init(Thread*);
