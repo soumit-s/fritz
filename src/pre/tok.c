@@ -11,24 +11,27 @@ enum {
   TYPE_CONTAINER,
   TYPE_LETTER,
   TYPE_DIGIT,
+  TYPE_SYMBOL_UNDERSCORE,
+  TYPE_SYMBOL_DOLLAR,
 };
 
-const int NUM_KEYWORDS = 8;
-const char *KEYWORDS[] = {"say", "return", "method", "if", "elif", "else", "while", "class"};
+const int NUM_KEYWORDS = 9;
+const char *KEYWORDS[] = {"say", "return", "method", "if", "elif", "else", "while", "class", "use"};
 
-const int NUM_OPERATORS = 23;
+const int NUM_OPERATORS = 28;
 const char *OPERATORS[] = {
     "=",  "+",  "-",  "/", "*",   "%",  ">", "<", ">>", "<<", 
     "==", "<=", ">=", "!=", "and", "or", "!", ".", "<-", "<|", 
-    "|", "&", ":"};
+    "|", "&", ":", "new", "detach", "as", "->", "proto"};
 
-const int NUM_UNARY_OPERATORS = 1;
-const char *UNARY_OPERATORS[] = {"!"};
+const int NUM_UNARY_OPERATORS = 4;
+const char *UNARY_OPERATORS[] = {"!", "new", "detach", "proto"};
 
-const int NUM_BINARY_OPERATORS = 22;
+const int NUM_BINARY_OPERATORS = 24;
 const char *BINARY_OPERATORS[] = {
     "=",  "+",  "-",  "/", "*",   "%",  ">", "<", ">>",
-    "<<", "==", "<=", ">=", "!=", "and", "or", ".", "<-", "<|", ":", "|", "&"};
+    "<<", "==", "<=", ">=", "!=", "and", "or", ".", "<-", 
+    "<|", ":", "|", "&", "as", "->"};
 
 const int NUM_SEPARATORS = 1;
 const char *SEPARATORS[] = {","};
@@ -77,8 +80,17 @@ int is_container(string s) {
   return FALSE;
 }
 
+int is_null(string s) {
+  return string_eqc(s, "null");
+}
+
+int is_boolean(string s) {
+  return string_eqc(s, "true") || string_eqc(s, "false");
+}
+
 int is_identifier(string str) {
-  if (is_keyword(str)) {
+  if (is_keyword(str) || is_boolean(str)
+          || is_null(str)) {
     return FALSE;
   }
   
@@ -150,7 +162,7 @@ int str_in_arr(const char *arr[], size_t l, string s) {
   return FALSE;
 }
 
-int is_unary_oeprator(string s) {
+int is_unary_operator(string s) {
   return str_in_arr(UNARY_OPERATORS, NUM_UNARY_OPERATORS, s);
 }
 
@@ -247,6 +259,10 @@ size_t _tokenize(const char *s, size_t l, Token *tokens) {
       t = TYPE_DIGIT;
     } else if (is_letter(s[i])) {
       t = TYPE_LETTER;
+    } else if (s[i] == '_') {
+      t = TYPE_SYMBOL_UNDERSCORE;
+    } else if (s[i] == '$') {
+      t = TYPE_SYMBOL_DOLLAR;
     } else {
       string k = string_new(&s[i], 1);
       if (is_operator(k)) {
@@ -288,9 +304,10 @@ size_t _tokenize(const char *s, size_t l, Token *tokens) {
       // Octal numbers start with 0
       // Binary numbers start with 0b
       j = extract_number(s, l, i, &tp);
-    } else if (t == TYPE_LETTER) {
+    } else if (t == TYPE_LETTER || t == TYPE_SYMBOL_DOLLAR ||
+          t == TYPE_SYMBOL_UNDERSCORE) {
       for (j = i + 1; j < l; ++j) {
-        if (!is_letter(s[j]) && !is_digit(s[j]) && s[i] != '_') {
+        if (!is_letter(s[j]) && !is_digit(s[j]) && s[j] != '_') {
           break;
         }
       }
@@ -333,7 +350,9 @@ size_t _tokenize(const char *s, size_t l, Token *tokens) {
         continue;
       }
 
-      if (string_eqc(token.value, "true") || string_eqc(token.value, "false")) {
+      if (is_null(token.value)) {
+        tokens[m].type = TOKEN_TYPE_LITERAL_NULL;
+      } else if (is_boolean(token.value)) {
         tokens[m].type = TOKEN_TYPE_LITERAL_BOOLEAN;
       } else if (is_keyword(token.value)) {
         tokens[m].type = TOKEN_TYPE_KEYWORD;
@@ -402,6 +421,9 @@ void token_info(Token t) {
     break;
   case TOKEN_TYPE_LITERAL_BOOLEAN:
     printf("literal.bool");
+    break;
+  case TOKEN_TYPE_LITERAL_NULL:
+    printf("literal.null");
     break;
   case TOKEN_TYPE_UNKNOWN:
     printf("unknown");
