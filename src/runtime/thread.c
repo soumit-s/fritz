@@ -1,7 +1,10 @@
 #include "runtime/thread.h"
+#include "runtime/fstack.h"
 
 
 void thread_init(Thread *t) {
+	t->status = THREAD_STATUS_INFANT;
+
 	// The default size of the stack is 1024 kB 
 	stack_create(&t->stack, 1024 * 1024 / sizeof(Value));
 
@@ -10,7 +13,8 @@ void thread_init(Thread *t) {
 }
 
 void thread_destroy(Thread *t) {
-
+	frame_stack_destroy(&t->fstack);
+	stack_destroy(&t->stack);
 }
 
 void thread_iterator_init(ThreadIterator *i) {
@@ -23,7 +27,19 @@ void thread_pool_init(ThreadPool *p) {
 }
 
 void thread_pool_destroy(ThreadPool *p) {
+	ThreadIterator *start = thread_pool_iter(p);
+	ThreadIterator *iter = start->next;
+	while (iter != start) {
+		ThreadIterator *next = iter->next;
+		
+		thread_destroy(&iter->thread);
+		free(iter);
 
+		iter = next;
+	}
+
+	thread_destroy(&start->thread);
+	free(start);
 }
 
 void thread_pool_add(ThreadPool *p, Thread t) {
