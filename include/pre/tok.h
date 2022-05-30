@@ -25,6 +25,7 @@ typedef enum {
 	TOKEN_TYPE_LITERAL_INT_BINARY,
 	TOKEN_TYPE_LITERAL_FLOAT_DECIMAL,
 	TOKEN_TYPE_LITERAL_BOOLEAN,
+	TOKEN_TYPE_LITERAL_NULL,
 	TOKEN_TYPE_SPACE,
 	TOKEN_TYPE_NEWLINE,
 } TOKEN_TYPE;
@@ -59,6 +60,8 @@ extern int is_digit(char);
 extern int is_operator(string s);
 extern int is_separator(string s);
 extern int is_container(string s);
+extern int is_null(string s);
+extern int is_boolean(string s);
 
 extern int is_identifier(string);
 extern int is_keyword(string);
@@ -68,7 +71,7 @@ extern int is_container_closer(string);
 
 extern string container_opener_to_closer(string);
 
-extern int is_unary_oeprator(string);
+extern int is_unary_operator(string);
 extern int is_binary_operator(string);
 
 extern Token* tokenize(const char*, size_t, size_t*);
