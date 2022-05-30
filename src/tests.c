@@ -21,7 +21,7 @@ size_t buffer_size;
 AstNodeList *l;
 
 int tests_init() {
-	FILE *f = fopen("./res/4.txt", "r");
+	FILE *f = fopen("./res/4.fz", "r");
 	if (!f) {
 		printf("failed to load file ./res/4.txt");
 		return 1;
@@ -109,6 +109,8 @@ int test_compiler() {
 	constant_pool_create(&p, pc);
 
 	Source src;
+	src.buffer = buffer;
+	src.buffer_size = buffer_size;
 	src.bcode = *bc;
 	src.const_pool = p;
 
@@ -117,19 +119,23 @@ int test_compiler() {
 
 	printf("-----------------------------------\n");
 
+	string k = to_string("res");
+
+	instance->src_manager.lpaths = &k;
+	instance->src_manager.n_lpaths = 1;
+
 	// Create the main thread to exectute the bytecode.
 	instance_exec(instance);
 	
 
 	instance_destroy(instance);
 
-	constant_pool_destroy(&p);
 	free(instance);
 
 	free(b);
 	free(pc);
 
-	free((uint8_t*)bc->buffer);
+	//free((uint8_t*)bc->buffer);
 	free(bc);
 	return 0;	
 }
@@ -139,6 +145,6 @@ int tests_over() {
 		ast_node_list_destroy(l);
 	}
 	free(tokens);
-	free(buffer);
+	//free(buffer);
 	return 0;
 }
