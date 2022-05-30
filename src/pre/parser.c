@@ -125,6 +125,28 @@ AstNodeListIterator *parse_operator(AstNodeList *l, AstNodeListIterator *s,
 
     prev->value = n;
     i = prev;
+  } else if (string_eqc(o.value, "detach")) {
+    if (i->next == NULL || e->next == e) {
+      // error: operatnd missing.
+    }
+
+    AstNode t = i->next->value;
+    if(t.type == NODE_TYPE_CONTAINER && string_eqc(t.value.value, "{")) {
+
+    } else if (t.type == NODE_TYPE_CONT_CALL) {
+      MetaDataContCall *m = malloc(sizeof(MetaDataContCall));
+      m->detached = TRUE;
+
+      t.meta_data = m;
+
+      i->value = t;
+
+      ast_node_list_remove(i->next);
+      
+    } else {
+      // error: invalid operand (operand must be a container or a function call)
+    }
+
   } else {
     AstNodeListIterator *next = i->next;
     if (next == NULL || next == e) {
@@ -176,7 +198,41 @@ void parse_operators(AstNodeList *l, AstNodeListIterator *s,
       }*/
       AstNode n = i->value;
       if (n.type == NODE_TYPE_TOKEN) {
-        for (int j = 0; j < p.n_operators; ++j) {
+
+        // For parsing unary form of the minus
+        // operator.
+        if (k == 1 && string_eqc(n.value.value, "-") && i->next != e) {
+          int f = FALSE;
+          if (!(f = i == s)) {
+            AstNode prev = i->prev->value;
+            if (prev.type == NODE_TYPE_TOKEN) {
+              switch (prev.value.type) {
+                case TOKEN_TYPE_IDENTIFIER:
+                case TOKEN_TYPE_LITERAL_BOOLEAN:
+                case TOKEN_TYPE_LITERAL_INT_BINARY:
+                case TOKEN_TYPE_LITERAL_INT_DECIMAL:
+                case TOKEN_TYPE_LITERAL_INT_OCTAL:
+                case TOKEN_TYPE_LITERAL_FLOAT_DECIMAL:
+                case TOKEN_TYPE_LITERAL_STRING:
+                  break;
+                default:
+                  f = TRUE;
+              }
+            }
+          }
+
+          if (f) {
+            AstNode n = i->value;
+            n.type = NODE_TYPE_UNARY_OPERATOR;
+            n.children = malloc(sizeof(AstNode));
+            *n.children = i->next->value;
+            n.n_children = 1;
+
+            i->value = n;
+
+            ast_node_list_remove(i->next);
+          }
+        } else for (int j = 0; j < p.n_operators; ++j) {
           string o = to_string(p.operators[j]);
           if (string_eq(o, n.value.value)) {
             i = parse_operator(l, s, e, i);
@@ -197,7 +253,7 @@ void parse_operators(AstNodeList *l, AstNodeListIterator *s,
           goto __j;
 
         // previous node (p) should not be a keyword
-        if (p.value.type == NODE_TYPE_KEYWORD)
+        if (p.value.type == TOKEN_TYPE_KEYWORD) 
           goto __j;
 
         if (p.type == NODE_TYPE_TOKEN) {
@@ -293,7 +349,7 @@ void parse_keywords(AstNodeList *l, AstNodeListIterator *s,
     if (n.type != NODE_TYPE_TOKEN)
       continue;
     if (n.value.type == TOKEN_TYPE_KEYWORD) {
-      if (KEYWORD_IS(n, "say") || KEYWORD_IS(n, "return")) {
+      if (KEYWORD_IS(n, "say") || KEYWORD_IS(n, "return") || KEYWORD_IS(n, "use")) {
         if (i->next == e || i->next == NULL) {
           // error.
         }
