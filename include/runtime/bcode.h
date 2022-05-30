@@ -79,6 +79,8 @@ DECLARE_OPCODE(BLOCK_EXPLICIT_START);
 DECLARE_OPCODE(BLOCK_EXPLICIT_END);
 DECLARE_OPCODE(BLOCK_NOEXEC_START);
 DECLARE_OPCODE(BLOCK_NOEXEC_END);
+DECLARE_OPCODE(BLOCK_NOEXEC_IMPLICIT_START);
+DECLARE_OPCODE(BLOCK_NOEXEC_IMPLICIT_END);
 
 DECLARE_OPCODE(ADD);
 DECLARE_OPCODE(SUB);
@@ -92,6 +94,9 @@ DECLARE_OPCODE(GTE);
 DECLARE_OPCODE(LTE);
 DECLARE_OPCODE(EQ);
 DECLARE_OPCODE(NEQ);
+
+DECLARE_OPCODE(NOT);
+DECLARE_OPCODE(PROTO);
 
 // Instruction: set.object
 // Syntax set.object
@@ -166,6 +171,21 @@ DECLARE_OPCODE(INVOKE_CONSTANT);
 // Similar to invoke.constant except that the
 // function is executed in a thread.
 DECLARE_OPCODE(INVOKE_CONSTANT_ASYNC);
+
+// Instruction: invoke.constant.me
+// Syntax: invoke.constant.me
+// Similar to invoke.constant except that
+// this is used to call object methods.
+// For example: dog.bark()
+// It implicitly passes thhe object 'dog'
+// to the method as 'me'.
+DECLARE_OPCODE(INVOKE_CONSTANT_ME);
+
+// Instruction: invoke.constant.me.async
+// Syntax: invoke.constant.me.async
+// Same as invoke.constant.me, but calls the 
+// method asynchronously. 
+DECLARE_OPCODE(INVOKE_CONSTANT_ME_ASYNC);
 
 // Instruction: method.create
 // Syntax: method.create
@@ -263,6 +283,31 @@ DECLARE_OPCODE(STACK_DUP_TOP);
 // any value.
 DECLARE_OPCODE(CLASSIFY);
 
+// Instruction: instantiate
+// Syntax: instantiate <num-params>
+// Creates an object from a class.
+DECLARE_OPCODE(INSTANTIATE);
+
+DECLARE_OPCODE(MODULE_LOAD);
+
+// Instruction: set.object.dependant
+// Syntax: set.object.dependant
+DECLARE_OPCODE(SET_OBJECT_DEPENDANT);
+
+DECLARE_OPCODE(SET_SCOPE_DEPENDANT);
+
+DECLARE_OPCODE(SET_SCOPE_DEPENDANT_STACK);
+
+
+// Instruction: listify
+// Syntax: listify <num-elements(FzInt)>
+// Creates a list from the given set of elements
+DECLARE_OPCODE(LISTIFY);
+
+DECLARE_OPCODE(ATTACH_OBJECT);
+
+DECLARE_OPCODE(ATTACH_SCOPE);
+
 
 #define INST_TO_OPCODE_MAP \
 	X(GET_OBJECT, "get.object") \
@@ -275,6 +320,8 @@ DECLARE_OPCODE(CLASSIFY);
 	X(SET_SCOPE_NULL, "set.scope.null") \
 	X(INVOKE_CONSTANT, "invoke.constant") \
 	X(INVOKE_CONSTANT_ASYNC, "invoke.constant.async") \
+	X(INVOKE_CONSTANT_ME, "invoke.constant.me") \
+	X(INVOKE_CONSTANT_ME_ASYNC, "invoke.constant.me.async") \
 	X(ADD, "add") \
 	X(SUB, "sub") \
 	X(DIV, "div") \
@@ -286,6 +333,8 @@ DECLARE_OPCODE(CLASSIFY);
 	X(LTE, "lte") \
 	X(EQ, "eq") \
 	X(NEQ, "neq") \
+	X(NOT, "not") \
+	X(PROTO, "proto") \
 	X(GET_NULL, "get.null") \
 	X(METHOD_CREATE, "method.create") \
 	X(OBJECT_CREATE, "object.create") \
@@ -295,6 +344,8 @@ DECLARE_OPCODE(CLASSIFY);
 	X(BLOCK_IMPLICIT_END, "block.implicit.end") \
 	X(BLOCK_NOEXEC_START, "block.noexec.start") \
 	X(BLOCK_NOEXEC_END, "block.noexec.end") \
+	X(BLOCK_NOEXEC_IMPLICIT_START, "block.noexec.implicit.start") \
+	X(BLOCK_NOEXEC_IMPLICIT_END, "block.noexec.implicit.end") \
 	X(RETURN, "return") \
 	X(RETURN_NULL, "return.null") \
 	X(JUMP, "jump") \
@@ -305,4 +356,13 @@ DECLARE_OPCODE(CLASSIFY);
 	X(JUMP_NIF_NOPOP, "jump.nif.nopop") \
 	X(POP, "pop") \
 	X(STACK_DUP_TOP, "stack.dup.top") \
-	X(CLASSIFY, "classify")
+	X(CLASSIFY, "classify") \
+	X(INSTANTIATE, "instantiate") \
+	X(MODULE_LOAD, "module.load") \
+	X(SET_OBJECT_DEPENDANT, "set.object.dependant") \
+	X(SET_SCOPE_DEPENDANT, "set.scope.dependant") \
+	X(SET_SCOPE_DEPENDANT_STACK, "set.scope.dependant.stack") \
+	X(LISTIFY, "listify") \
+	X(ATTACH_OBJECT, "attach.object") \
+	X(ATTACH_SCOPE, "attach.scope") 
+	

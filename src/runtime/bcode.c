@@ -116,6 +116,8 @@ void bcode_dump(Bcode *bc, ConstantPool *p) {
 			OPCODE_EQUALS(addr, OPCODE_LTE) || 
 			OPCODE_EQUALS(addr, OPCODE_EQ) ||
 			OPCODE_EQUALS(addr, OPCODE_NEQ) ||
+			OPCODE_EQUALS(addr, OPCODE_NOT) ||
+			OPCODE_EQUALS(addr, OPCODE_PROTO) ||
 			OPCODE_EQUALS(addr, OPCODE_SET_OBJECT) ||
 			OPCODE_EQUALS(addr, OPCODE_GET_NULL) ||
 			OPCODE_EQUALS(addr, OPCODE_METHOD_CREATE) ||
@@ -123,13 +125,18 @@ void bcode_dump(Bcode *bc, ConstantPool *p) {
 			OPCODE_EQUALS(addr, OPCODE_BLOCK_EXPLICIT_END) ||
 			OPCODE_EQUALS(addr, OPCODE_BLOCK_IMPLICIT_END) ||
 			OPCODE_EQUALS(addr, OPCODE_BLOCK_NOEXEC_END) ||
+			OPCODE_EQUALS(addr, OPCODE_BLOCK_IMPLICIT_END) ||
+			OPCODE_EQUALS(addr, OPCODE_BLOCK_NOEXEC_IMPLICIT_END) ||
 			OPCODE_EQUALS(addr, OPCODE_RETURN) ||
 			OPCODE_EQUALS(addr, OPCODE_RETURN_NULL) ||
 			OPCODE_EQUALS(addr, OPCODE_GET_OBJECT) ||
 			OPCODE_EQUALS(addr, OPCODE_POP) ||
 			OPCODE_EQUALS(addr, OPCODE_STACK_DUP_TOP) ||
 			OPCODE_EQUALS(addr, OPCODE_CLASSIFY) ||
-			OPCODE_EQUALS(addr, OPCODE_SET_SCOPE_STACK)
+			OPCODE_EQUALS(addr, OPCODE_SET_SCOPE_STACK) ||
+			OPCODE_EQUALS(addr, OPCODE_MODULE_LOAD) ||
+			OPCODE_EQUALS(addr, OPCODE_SET_OBJECT_DEPENDANT) ||
+			OPCODE_EQUALS(addr, OPCODE_SET_SCOPE_DEPENDANT_STACK)
 			) {
 			printf("%s\n", _opcode_to_inst(addr));
 			i += OPCODE_SIZE;
@@ -137,7 +144,8 @@ void bcode_dump(Bcode *bc, ConstantPool *p) {
 				OPCODE_EQUALS(addr, OPCODE_GET_CONSTANT) ||
 				OPCODE_EQUALS(addr, OPCODE_GET_SCOPE) ||
 				OPCODE_EQUALS(addr, OPCODE_SET_SCOPE) ||
-				OPCODE_EQUALS(addr, OPCODE_SET_SCOPE_NULL)
+				OPCODE_EQUALS(addr, OPCODE_SET_SCOPE_NULL) ||
+				OPCODE_EQUALS(addr, OPCODE_SET_SCOPE_DEPENDANT)
 			) {
 			printf("%s ", _opcode_to_inst(addr));
 			CONSTANT_ID id = *(const CONSTANT_ID*)(addr + 2);
@@ -147,6 +155,7 @@ void bcode_dump(Bcode *bc, ConstantPool *p) {
 			OPCODE_EQUALS(addr, OPCODE_BLOCK_NOEXEC_START) ||
 			OPCODE_EQUALS(addr, OPCODE_BLOCK_IMPLICIT_START) ||
 			OPCODE_EQUALS(addr, OPCODE_BLOCK_EXPLICIT_START) ||
+			OPCODE_EQUALS(addr, OPCODE_BLOCK_NOEXEC_IMPLICIT_START) ||
 			OPCODE_EQUALS(addr, OPCODE_JUMP) ||
 			OPCODE_EQUALS(addr, OPCODE_JUMP_IF) ||
 			OPCODE_EQUALS(addr, OPCODE_JUMP_NIF) ||
@@ -159,7 +168,11 @@ void bcode_dump(Bcode *bc, ConstantPool *p) {
 			printf("%ld\n", n);
 			i += OPCODE_SIZE + sizeof(size_t);
 		} else if (OPCODE_EQUALS(addr, OPCODE_INVOKE_CONSTANT) ||
-				OPCODE_EQUALS(addr, OPCODE_INVOKE_CONSTANT_ASYNC)) {
+				OPCODE_EQUALS(addr, OPCODE_INVOKE_CONSTANT_ASYNC) ||
+				OPCODE_EQUALS(addr, OPCODE_INVOKE_CONSTANT_ME) ||
+				OPCODE_EQUALS(addr, OPCODE_INVOKE_CONSTANT_ME_ASYNC) ||
+				OPCODE_EQUALS(addr, OPCODE_INSTANTIATE) ||
+				OPCODE_EQUALS(addr, OPCODE_LISTIFY)){
 			printf("%s ", _opcode_to_inst(addr));
 			FzInt num_params = *(const FzInt*)(addr + 2);
 			printf("%ld\n", num_params);
