@@ -4,9 +4,24 @@
 #include "runtime/bcode.h"
 
 typedef enum {
+  // External blocks are used while loading modules.
+  // Once executed, the write scope is pushed onto
+  // the stack. This is internally used by the module.load
+  // instruction.
+  BLOCK_TYPE_EXTERNAL,
+
   BLOCK_TYPE_EXPLICIT,
   BLOCK_TYPE_IMPLICIT,
-  BLOCK_TYPE_NOEXEC
+
+  // Used to start blocks that are not meant
+  // to be executed immediately once encountered.
+  // It is used in creating methods.
+  BLOCK_TYPE_NOEXEC,
+
+  // Used for dependency blocks. These blocks
+  // donot have a scope of their own but instead
+  // use the scope the parent block.
+  BLOCK_TYPE_NOEXEC_IMPLICT
 } BLOCK_TYPE;
 
 // Id of a Source Object.
@@ -23,6 +38,9 @@ struct fz_source {
   Bcode bcode;
   BcodeMetaData data;
   ConstantPool const_pool;
+
+  char *buffer;
+  size_t buffer_size;
 };
 
 typedef struct fz_block Block;
@@ -38,4 +56,7 @@ struct fz_block {
 
   // The source, this block belongs to.
   Source *source;
+
+  // Meant for noexec.implicit blocks
+  void *read_scope, *write_scope;
 };
