@@ -1,0 +1,32 @@
+
+# This module contains utilities for interacting
+# with the underlying operating system.
+
+# Load the fritz dynamic library.
+# Since the fritz dynamic library is automatically
+# loaded by the interpreter, we donot need to
+# reload the library again. Instead we pass
+# null to loadDylib which makes it return the 
+# handle to the current program.
+_libFritz = loadDylib(null)  
+
+# Takes a string and executes as a
+# shell command. It internally calls
+# the C function system() to executes
+# the command
+execCmd = _libFritz.loadMethod("uni_exec_cmd")
+
+class Platform {
+  method new() {
+    me.system = null
+    me.release = null
+    me.version = null
+    me.nodeName = null
+    me.machine = null
+    return me
+  }
+}
+
+# It is an object containing information about the
+# operating system.
+platform = (_libFritz.loadMethod("uni_get_platform_info"))(new Platform())
