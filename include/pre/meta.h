@@ -12,3 +12,12 @@ typedef struct {
 	AstNode else_node;
 	
 } MetaDataIf;
+
+typedef struct {
+	// Whether the detach operator has been used on the
+	// funcion call.
+	int detached;
+
+} MetaDataContCall;
+
+#define META_DATA_CONT_CALL_NEW() {.detached=FALSE}
