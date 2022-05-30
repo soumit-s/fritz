@@ -11,3 +11,6 @@ typedef int FzBool;
 typedef long FzInt;
 typedef double FzFloat;
 typedef struct fz_string FzString;
+
+#define VERSION "0.0.1"
+#define PHASE "pre-alpha"
