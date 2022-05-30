@@ -4,6 +4,8 @@
 #include "pre/tok.h"
 #include "runtime/bcode.h"
 #include "runtime/const_pool.h"
+#include "runtime/obj.h"
+#include "str.h"
 
 #define __OPCODE_MAPPER(x, y)                                                  \
   if (string_eqc(s, x))                                                        \
@@ -21,12 +23,54 @@ const uint8_t *_map_opcode(string s) {
   __OPCODE_MAPPER("<=", OPCODE_LTE);
   __OPCODE_MAPPER(">", OPCODE_GT);
   __OPCODE_MAPPER("<", OPCODE_LT);
+  __OPCODE_MAPPER("!", OPCODE_NOT);
+  __OPCODE_MAPPER("proto", OPCODE_PROTO);
   return NULL;
 }
 
-void instance_compile_literal(Instance *i, AstNode n, BcodeBuffer *b,
-                              ConstantPoolCreator *p) {
-  Token t = n.value;
+int is_token_literal(Token t) {
+  switch (t.type) {
+    case TOKEN_TYPE_LITERAL_INT_DECIMAL:
+    case TOKEN_TYPE_LITERAL_INT_BINARY:
+    case TOKEN_TYPE_LITERAL_INT_OCTAL:
+    case TOKEN_TYPE_LITERAL_INT_HEX:
+    case TOKEN_TYPE_LITERAL_FLOAT_DECIMAL:
+    case TOKEN_TYPE_LITERAL_BOOLEAN:
+    case TOKEN_TYPE_LITERAL_STRING:
+    case TOKEN_TYPE_LITERAL_NULL:
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+
+int parse_complex_string(string s) {
+  // Complex strings are written within "" quotes
+  // In order to embed values within a complex
+  // string use { ... } paranthesis.
+  // Example: "my name is {me.name} and age is {me.age}"
+  // You can skip a { using \{.
+  int f = 0;
+  for (size_t i=1; i < s.length-1; ++i) {
+    char c = s.value[i];
+    if (c == '{') {
+
+    } else if (c == '\\') {
+
+    } else {
+
+    }
+  }
+
+  return -1;
+}
+
+void instance_compile_complex_string(Instance *i, AstNode n, BcodeBuffer *b, ConstantPoolCreator *p) {
+  parse_complex_string(n.value.value);
+}
+
+
+Constant token_to_constant(Token t) {
   Constant c;
   switch (t.type) {
   case TOKEN_TYPE_LITERAL_INT_DECIMAL:
@@ -77,6 +121,20 @@ void instance_compile_literal(Instance *i, AstNode n, BcodeBuffer *b,
     break;
   }
 
+  return c;
+}
+
+void instance_compile_literal(Instance *i, AstNode n, BcodeBuffer *b,
+                              ConstantPoolCreator *p) {
+  Token t = n.value;
+
+  if (t.type == TOKEN_TYPE_LITERAL_NULL) {
+    bcode_buffer_append(b, OPCODE_GET_NULL, OPCODE_SIZE);
+    return;
+  }
+
+  Constant c = token_to_constant(t);
+  
   // Add it to the constant pool creator and retrieve the
   // constant id.
   CONSTANT_ID id;
@@ -86,6 +144,8 @@ void instance_compile_literal(Instance *i, AstNode n, BcodeBuffer *b,
 
   bcode_buffer_append(b, OPCODE_GET_CONSTANT, OPCODE_SIZE);
   bcode_buffer_append(b, (const uint8_t *)&id, sizeof(id));
+
+  //return c;
 }
 
 void instance_compile_node_as_literal(Instance *i, AstNode n, BcodeBuffer *b,
@@ -161,10 +221,14 @@ void instance_compile_keyword_node_method(Instance *i, AstNode n,
     size_t n_params = 0;
     if (f_params.type == NODE_TYPE_CONTAINER) {
       // For now only a, b, c, ... format is supported.
-      if (f_params.n_children &&
-          f_params.children[0].type == NODE_TYPE_SEPARATOR) {
-        params = f_params.children[0].children;
-        n_params = f_params.children[0].n_children;
+      if (f_params.n_children) {
+        if (f_params.children[0].type == NODE_TYPE_SEPARATOR) {
+          params = f_params.children[0].children;
+          n_params = f_params.children[0].n_children;
+        } else {
+          params = f_params.children;
+          n_params = f_params.n_children;
+        }
       } else {
         params = NULL;
         n_params = 0;
@@ -420,6 +484,34 @@ void instance_compile_keyword_node_class(Instance *i, AstNode n, BcodeBuffer *b,
   bcode_buffer_append(b, OPCODE_SET_SCOPE_STACK, OPCODE_SIZE);
 }
 
+void instance_compile_keyword_node_use(Instance *i, AstNode n, BcodeBuffer *b, ConstantPoolCreator *p) {
+  // Check if the operand is an 'as' expression.
+  // 'as' is used to provide to lend an alias to the
+  // imported module.
+
+  AstNode as = n.children[0];
+
+  AstNode path, alias;
+
+  int has_alias = FALSE;
+
+  if (as.type == NODE_TYPE_BINARY_OPERATOR && string_eqc(as.value.value, "as")) {
+    has_alias = TRUE;
+    path = as.children[0];
+    alias = as.children[1];
+  } else {
+    path = as;
+  }
+
+  instance_compile_node(i, path, b, p);
+  bcode_buffer_append(b, OPCODE_MODULE_LOAD, OPCODE_SIZE);
+
+  if (has_alias) {
+    instance_compile_node(i, alias, b, p);
+    bcode_buffer_append(b, OPCODE_SET_SCOPE_STACK, OPCODE_SIZE);
+  }
+}
+
 void instance_compile_keyword_node(Instance *i, AstNode n, BcodeBuffer *b,
                                    ConstantPoolCreator *p) {
   Token v = n.value;
@@ -440,6 +532,8 @@ void instance_compile_keyword_node(Instance *i, AstNode n, BcodeBuffer *b,
     instance_compile_keyword_node_while(i, n, b, p);
   } else if (string_eqc(v.value, "class")) {
     instance_compile_keyword_node_class(i, n, b, p);
+  } else if (string_eqc(v.value, "use")) {
+    instance_compile_keyword_node_use(i, n, b, p);
   }
 }
 
@@ -498,6 +592,96 @@ void instance_compile_identifier(Instance *i, AstNode n, BcodeBuffer *b,
   bcode_buffer_append(b, (const uint8_t *)&id, sizeof(CONSTANT_ID));
 }
 
+size_t instance_compile_func_call_params(Instance *i, AstNode *children, size_t n_children, 
+  BcodeBuffer *b, ConstantPoolCreator *p) {
+
+  FzInt param_count = 0;
+
+  if (children) {
+    for (size_t j = 0; j < n_children; ++j) {
+      AstNode c = children[j];
+      if (c.type == NODE_TYPE_SEPARATOR) {
+        for (size_t k = 0; k < c.n_children; ++k, ++param_count)
+          instance_compile_node(i, c.children[k], b, p);
+      } else {
+        instance_compile_node(i, c, b, p);
+        param_count++;
+      }
+    }
+  }
+
+  return param_count;
+}
+
+void instance_compile_method_call(Instance *i, AstNode n, BcodeBuffer *b,
+                          ConstantPoolCreator *p) {
+  // Expression is of the form abc(a, b)
+  // where,
+  //     Left Node = 'abc' (index 0) [Can be any other node]
+  //     Right Node = '(a, b)' (index 1)
+
+  // src_n <= Left Node
+  AstNode src_n = n.children[0];
+  // cont_n <= Right Node
+  AstNode cont_n = n.children[1];
+
+  // Compile the parameters and push them onto the stack.
+  FzInt param_count = instance_compile_func_call_params(
+        i, cont_n.children, cont_n.n_children, b, p);    
+
+  // Check if the node has meta data.
+  MetaDataContCall *m = n.meta_data;
+
+  // Compile the node that will put the function to be called on the stack.
+  instance_compile_node(i, src_n, b, p);
+  
+  if(m && m->detached) {
+    bcode_buffer_append(b, OPCODE_INVOKE_CONSTANT_ASYNC, OPCODE_SIZE);
+  } else {
+    bcode_buffer_append(b, OPCODE_INVOKE_CONSTANT, OPCODE_SIZE);
+  }
+
+  bcode_buffer_append(b, (const uint8_t *)&param_count, sizeof(FzInt));
+}
+
+
+void instance_compile_object_method_call(Instance *i, AstNode n, BcodeBuffer *b, 
+                          ConstantPoolCreator *p) {
+  // Expression is of the form dog.bark(a, b)
+  // Left Node -> 'dog.bark' (index 0)
+  //       |
+  //       |----> dog (index 0)
+  //       |
+  //       |----> bark (index 1)       
+  //
+  // Right Node -> '(a, b)' (index 1) 
+  // The result of the Left Node will be the 
+  // treated as the 'me' for the method call.
+
+  AstNode fn = n.children[0];
+  AstNode cont_n = n.children[1];
+
+  // Compile the parameters.
+  FzInt n_params = instance_compile_func_call_params(i, cont_n.children,
+            cont_n.n_children, b, p);
+
+  int is_detached = n.meta_data && ((MetaDataContCall*)n.meta_data)->detached;
+
+  // Push the object onto the stack
+  instance_compile_node(i, fn.children[0], b, p);
+
+  // Push the function name onto the stack.
+  instance_compile_node_as_literal(i, fn.children[1], b, p);
+
+  if (is_detached) {
+    bcode_buffer_append(b, OPCODE_INVOKE_CONSTANT_ME_ASYNC, OPCODE_SIZE);
+  } else {
+    bcode_buffer_append(b, OPCODE_INVOKE_CONSTANT_ME, OPCODE_SIZE);
+  }
+
+  bcode_buffer_append(b, (uint8_t*)&n_params, sizeof(FzInt));
+}
+
 void instance_compile_cont_call(Instance *i, AstNode n, BcodeBuffer *b,
                                 ConstantPoolCreator *p) {
   // hello (a, b)
@@ -521,26 +705,47 @@ void instance_compile_cont_call(Instance *i, AstNode n, BcodeBuffer *b,
   //
   //      (b) Can be an identifier token. In such
   //          a case the function does not take any paramter.
-  if (string_eqc(cont_n.value.value, "(")) {
-    // Compile the parameters and push them onto the stack.
-    FzInt param_count = 0;
 
-    if (cont_n.children) {
-      for (size_t j = 0; j < cont_n.n_children; ++j) {
-        AstNode c = cont_n.children[j];
-        if (c.type == NODE_TYPE_SEPARATOR) {
-          for (size_t k = 0; k < c.n_children; ++k, ++param_count)
-            instance_compile_node(i, c.children[k], b, p);
-        } else {
-          instance_compile_node(i, c, b, p);
-          param_count++;
+  if (string_eqc(cont_n.value.value, "(")) {
+    
+    if (src_n.type == NODE_TYPE_BINARY_OPERATOR &&
+          string_eqc(src_n.value.value, ".")) {
+      instance_compile_object_method_call(i, n, b, p);
+    } else {
+      instance_compile_method_call(i, n, b, p);
+    }
+  
+  } else if (string_eqc(cont_n.value.value, "[")) {
+    // Array element access scenario. The element
+    // is fetched by implicitly calling the .__slicer()
+    // function.
+    FzInt count = 0;
+    for (int k=0; k < cont_n.n_children; ++k) {
+      AstNode c = cont_n.children[k];
+      if (c.type == NODE_TYPE_SEPARATOR) {
+        for (int j=0; j < c.n_children; ++j, ++count) {
+          instance_compile_node(i, c.children[j], b, p);
         }
+      } else {
+        instance_compile_node(i, c, b, p);
+        ++count;
       }
     }
-    // Compile the node that will put the function to be called on the stack.
+
+    // The object.
     instance_compile_node(i, src_n, b, p);
-    bcode_buffer_append(b, OPCODE_INVOKE_CONSTANT, OPCODE_SIZE);
-    bcode_buffer_append(b, (const uint8_t *)&param_count, sizeof(FzInt));
+
+    // The method name which is __slicer.
+    Constant c;
+    c.s_value = to_string("__slicer");
+    c.type = CONSTANT_TYPE_STRING;
+
+    CONSTANT_ID cid = constant_pool_creator_append_constant(p, c);
+    bcode_buffer_append(b, OPCODE_GET_CONSTANT, OPCODE_SIZE);
+    bcode_buffer_append(b, (uint8_t*)&cid, sizeof(CONSTANT_ID));
+
+    bcode_buffer_append(b, OPCODE_INVOKE_CONSTANT_ME, OPCODE_SIZE);
+    bcode_buffer_append(b, (uint8_t*)&count, sizeof(FzInt));
   }
 }
 
@@ -573,6 +778,286 @@ void instance_compile_operator_node_and_or(Instance *i, AstNode n, BcodeBuffer *
   *((size_t*)l_l.iter->fragment.ptr) = bcode_buffer_label_calculate_offset(l_l, l_r);
 }
 
+void instance_compile_operator_new(Instance *i, AstNode n, BcodeBuffer *b, ConstantPoolCreator *p) {
+  AstNode x = n.children[0];
+
+  AstNode name;
+  AstNode *c = NULL;
+  size_t n_c = 0; 
+
+  if (x.type == NODE_TYPE_CONT_CALL) {
+    name = x.children[0];
+    c = x.children[1].children;
+    n_c = x.children[1].n_children;
+  } else {
+    name = x;
+  }
+
+  FzInt n_params = (FzInt)instance_compile_func_call_params(i, c, n_c, b, p);
+  instance_compile_node(i, name, b, p);
+
+  bcode_buffer_append(b, OPCODE_INSTANTIATE, OPCODE_SIZE);
+  bcode_buffer_append(b, (uint8_t*)&n_params, sizeof(FzInt));
+
+  // Get the 'new' property from tne object and
+  // call it.
+  Constant nw;
+  nw.type = CONSTANT_TYPE_STRING;
+  nw.s_value = to_string("new");
+
+  CONSTANT_ID cid = constant_pool_creator_append_constant(p, nw); 
+  bcode_buffer_append(b, OPCODE_GET_CONSTANT, OPCODE_SIZE);
+  bcode_buffer_append(b, (uint8_t*)&cid, sizeof(CONSTANT_ID));
+
+  bcode_buffer_append(b, OPCODE_INVOKE_CONSTANT_ME, OPCODE_SIZE);
+  bcode_buffer_append(b, (uint8_t*)&n_params, sizeof(FzInt));
+}
+
+void instance_compile_operator_unary_minus(Instance *i, AstNode n, BcodeBuffer *b, ConstantPoolCreator *p) {
+  AstNode c = n.children[0];
+  Token t = c.value;
+  string v = t.value;
+
+  if (c.type == NODE_TYPE_TOKEN && is_token_literal(c.value)) {
+    string s;
+    s.length = v.length + 1;
+    char *ptr = malloc(s.length);
+    ptr[0] = '-';
+    memcpy(ptr + 1, v.value, v.length);
+    s.value = ptr;
+
+    Token t;
+    t.type = c.value.type;
+    t.value = s;
+
+    Constant c = token_to_constant(t);
+    CONSTANT_ID cid = constant_pool_creator_append_constant(p, c);
+
+    bcode_buffer_append(b, OPCODE_GET_CONSTANT, OPCODE_SIZE);
+    bcode_buffer_append(b, (uint8_t*)&cid, sizeof(CONSTANT_ID));
+
+    free(ptr);
+  } else {
+    Constant zero;
+    zero.type = CONSTANT_TYPE_INT;
+    zero.i_value = 0;
+
+    CONSTANT_ID cid = constant_pool_creator_append_constant(p, zero);
+
+    bcode_buffer_append(b, OPCODE_GET_CONSTANT, OPCODE_SIZE);
+    bcode_buffer_append(b, (uint8_t*)&cid, sizeof(CONSTANT_ID));
+
+    instance_compile_node(i, c, b, p);
+
+    bcode_buffer_append(b, OPCODE_SUB, OPCODE_SIZE);
+  }
+}
+
+void instance_compile_operator_dep(Instance *i, AstNode n, BcodeBuffer *b, ConstantPoolCreator *p) {
+  
+  AstNode dy = n.children[0], dt = n.children[1];
+  // When it comes to the dependant, it must be a block.
+  // The block must be a {...} container.
+  // In case of single line, blocks, the paranthesis can 
+  // be omitted.
+  size_t offset = 0;
+
+  bcode_buffer_append(b, OPCODE_BLOCK_NOEXEC_IMPLICIT_START, OPCODE_SIZE);
+  bcode_buffer_append(b, (uint8_t*)&offset, sizeof(size_t));
+
+  BcodeBufferLabel s = bcode_buffer_pin_label(b);
+
+  if (dt.type == NODE_TYPE_CONTAINER && 
+        string_eqc(dt.value.value, "{")) {
+    instance_compile_nodes(i, dt.children, dt.n_children, b, p);
+  } else {
+    instance_compile_node(i, dt, b, p);
+  }
+
+  BcodeBufferLabel e = bcode_buffer_pin_label(b);
+  bcode_buffer_append(b, OPCODE_BLOCK_NOEXEC_IMPLICIT_END, OPCODE_SIZE);
+
+  offset = bcode_buffer_label_calculate_offset(s, e);
+
+  *(size_t*)(s.iter->fragment.ptr) = offset;
+
+  // The left operand  will be the dependency for 
+  // the second operand(on the right which is the dependant.
+
+  size_t n_dy = 1;
+
+  // If dy is of the form ( 1, 2, .... ) then it indicates
+  // the presence of multiple dependencies.
+  if (dy.type == NODE_TYPE_CONTAINER && 
+        string_eqc(dy.value.value, "(")) {
+    
+    size_t count = 0;
+    for (size_t l=0; l < dy.n_children; ++l) {
+      AstNode c = dy.children[l];
+      if (c.type == NODE_TYPE_SEPARATOR) {
+        count += c.n_children;
+
+        for (size_t j=0; j < c.n_children; ++j) {
+          instance_compile_pattern_node(i, c.children[j], b, p);
+          
+          if (c.children[j].type == NODE_TYPE_TOKEN) {
+            bcode_buffer_append(b, OPCODE_SET_SCOPE_DEPENDANT_STACK, OPCODE_SIZE);
+          } else {
+            bcode_buffer_append(b, OPCODE_SET_OBJECT_DEPENDANT, OPCODE_SIZE);
+          }
+
+        }
+
+      } else {
+        instance_compile_pattern_node(i, c, b, p);
+        
+        if (c.type == NODE_TYPE_TOKEN) {
+          bcode_buffer_append(b, OPCODE_SET_SCOPE_DEPENDANT_STACK, OPCODE_SIZE);
+        } else {
+          bcode_buffer_append(b, OPCODE_SET_OBJECT_DEPENDANT, OPCODE_SIZE);
+        }
+
+        ++count;
+      }
+
+    }
+  } else {
+    instance_compile_pattern_node(i, dy, b, p);
+    
+    if (dy.type == NODE_TYPE_TOKEN) {
+      bcode_buffer_append(b, OPCODE_SET_SCOPE_DEPENDANT_STACK, OPCODE_SIZE);
+    } else {
+      bcode_buffer_append(b, OPCODE_SET_OBJECT_DEPENDANT, OPCODE_SIZE);
+    }
+  }
+}
+
+void instance_compile_operator_attach(Instance *i, AstNode n,
+            BcodeBuffer *b, ConstantPoolCreator *p) {
+
+  AstNode target = n.children[0];
+  AstNode payload = n.children[1];
+
+  // Compile the payload.
+  instance_compile_node(i, payload, b, p);
+
+  // Target can either be of the form x.y
+  // or must be an identifier.
+
+  if (target.type == NODE_TYPE_BINARY_OPERATOR && 
+        string_eqc(target.value.value, ".")) {
+    instance_compile_node(i, target.children[0], b, p);
+    instance_compile_node_as_literal(i, target.children[1], b, p);
+
+    bcode_buffer_append(b, OPCODE_ATTACH_OBJECT, OPCODE_SIZE);
+  } else if (target.type == NODE_TYPE_TOKEN && 
+          target.value.type == TOKEN_TYPE_IDENTIFIER) {
+    instance_compile_node_as_literal(i, target.children[0], b, p);
+    bcode_buffer_append(b, OPCODE_ATTACH_SCOPE, OPCODE_SIZE);
+  } else {
+    // error
+  }
+}
+
+void instance_compile_method_param_list(Instance *i, AstNode *c, size_t nc, 
+            BcodeBuffer *b, ConstantPoolCreator *p) {
+  size_t offset = 0;
+
+  bcode_buffer_append(b, OPCODE_BLOCK_IMPLICIT_START, OPCODE_SIZE);
+
+  bcode_buffer_append(b, (uint8_t*)&offset, sizeof(size_t));
+
+  BcodeBufferLabel l = bcode_buffer_pin_label(b);
+
+  // Count the number of parameters.
+  FzInt n_params = 0;
+  for (int m=0; m < nc; ++m) {
+    AstNode y = c[m];
+    if (y.type == NODE_TYPE_TOKEN && 
+          y.value.type == TOKEN_TYPE_IDENTIFIER) {
+      bcode_buffer_append(b, OPCODE_GET_NULL, OPCODE_SIZE);
+    
+      Constant c;
+      c.type = CONSTANT_TYPE_STRING;
+      c.s_value = y.value.value;
+    
+      CONSTANT_ID cid = constant_pool_creator_append_constant(p, c);
+    
+      bcode_buffer_append(b, OPCODE_SET_SCOPE, OPCODE_SIZE);
+      bcode_buffer_append(b, (uint8_t*)&cid, sizeof(CONSTANT_ID));
+    } else {
+      instance_compile_node(i, y, b, p);
+    }
+    ++n_params;
+  }
+
+  BcodeBufferLabel u = bcode_buffer_pin_label(b);
+
+  bcode_buffer_append(b, OPCODE_BLOCK_IMPLICIT_END, OPCODE_SIZE);
+
+  offset = bcode_buffer_label_calculate_offset(l, u);
+  *(size_t*)(l.iter->fragment.ptr) = offset;
+}
+
+void instance_compile_method_body(Instance *i, AstNode n, BcodeBuffer *b,
+                              ConstantPoolCreator *p) {
+  size_t offset = 0;
+  bcode_buffer_append(b, OPCODE_BLOCK_NOEXEC_START, OPCODE_SIZE);
+  bcode_buffer_append(b, (uint8_t*)&offset, sizeof(size_t));
+
+  BcodeBufferLabel l = bcode_buffer_pin_label(b);
+  
+  // If the body is not enclosed within { ... }, then
+  // the result of the expression will be the return value.
+  if (string_eqc(n.value.value, "{")) {
+    for (int k=0; k < n.n_children; ++k) {
+      instance_compile_node(i, n.children[k], b, p);
+    }
+    bcode_buffer_append(b, OPCODE_RETURN_NULL, OPCODE_SIZE);
+  } else {
+    instance_compile_node(i, n, b, p);
+    bcode_buffer_append(b, OPCODE_RETURN, OPCODE_SIZE);
+  }
+
+  BcodeBufferLabel u = bcode_buffer_pin_label(b);
+  
+  bcode_buffer_append(b, OPCODE_BLOCK_NOEXEC_END, OPCODE_SIZE);
+  offset = bcode_buffer_label_calculate_offset(l, u);
+  *(size_t*)(l.iter->fragment.ptr) = offset;
+}
+
+void instance_compile_operator_closure(Instance *i, AstNode n, BcodeBuffer *b,
+                          ConstantPoolCreator *p) {
+  AstNode params_n, body_n;
+
+  params_n = n.children[0];
+  body_n = n.children[1];
+
+  if (params_n.type != NODE_TYPE_CONTAINER) {
+    // error
+  }
+
+  // Compile the parameter list
+  if (params_n.children) {
+    AstNode t = params_n.children[0];
+    if (t.type == NODE_TYPE_SEPARATOR &&
+          string_eqc(t.value.value, ",")) {
+      instance_compile_method_param_list(i, t.children, t.n_children, b, p);
+    } else {
+      instance_compile_method_param_list(i, &t, 1, b, p);
+    }
+  } else {
+    bcode_buffer_append(b, OPCODE_GET_NULL, OPCODE_SIZE);
+  }
+
+  // Compile the body
+  instance_compile_method_body(i, body_n, b, p);
+
+  // Create the method
+  bcode_buffer_append(b, OPCODE_METHOD_CREATE, OPCODE_SIZE);
+}
+
+
 
 void instance_compile_node(Instance *i, AstNode n, BcodeBuffer *b,
                            ConstantPoolCreator *p) {
@@ -583,12 +1068,15 @@ void instance_compile_node(Instance *i, AstNode n, BcodeBuffer *b,
       instance_compile_pattern_matcher(i, n, b, p);
 
     } else if (string_eqc(v.value, "<-")) {
+      instance_compile_operator_dep(i, n, b, p);
+
+    } else if(string_eqc(v.value, "->")) {
+      instance_compile_operator_closure(i, n, b, p);
 
     } else if (string_eqc(v.value, "and") || string_eqc(v.value, "or")) {
       instance_compile_operator_node_and_or(i, n, b, p);
 
     } else if (string_eqc(v.value, ".")) {
-
       instance_compile_node(i, n.children[0], b, p);
 
       if (n.children[1].type != NODE_TYPE_TOKEN) {
@@ -597,8 +1085,10 @@ void instance_compile_node(Instance *i, AstNode n, BcodeBuffer *b,
 
       AstNode key = n.children[1];
       instance_compile_node_as_literal(i, key, b, p);
-
-      bcode_buffer_append(b, OPCODE_GET_OBJECT, OPCODE_SIZE);
+      bcode_buffer_append(b, OPCODE_GET_OBJECT, OPCODE_SIZE);      
+    
+    } else if (string_eqc(v.value, ":")) {
+      instance_compile_operator_attach(i, n, b, p);
 
     } else {
       instance_compile_node(i, n.children[0], b, p);
@@ -609,9 +1099,16 @@ void instance_compile_node(Instance *i, AstNode n, BcodeBuffer *b,
     }
   } else if (n.type == NODE_TYPE_UNARY_OPERATOR) {
 
-    instance_compile_node(i, n.children[0], b, p);
-    const uint8_t *opcode = _map_opcode(v.value);
-    bcode_buffer_append(b, opcode, OPCODE_SIZE);
+    if (string_eqc(v.value, "new")) {
+      instance_compile_operator_new(i, n, b, p);
+    } else if (string_eqc(v.value, "-")) {
+      instance_compile_operator_unary_minus(i, n, b, p);
+    } else {
+      instance_compile_node(i, n.children[0], b, p);
+      const uint8_t *opcode = _map_opcode(v.value);
+      bcode_buffer_append(b, opcode, OPCODE_SIZE);
+    }
+
 
   } else if (n.type == NODE_TYPE_CONTAINER) {
     if (string_eqc(v.value, "{")) {
@@ -641,6 +1138,23 @@ void instance_compile_node(Instance *i, AstNode n, BcodeBuffer *b,
     } else if (string_eqc(n.value.value, "(")) {
       // Compile the body of the container.
       instance_compile_nodes(i, n.children, n.n_children, b, p);
+    } else if (string_eqc(n.value.value, "[")) {
+
+      FzInt count = 0;
+      for (int k=0; k < n.n_children; ++k) {
+        AstNode c = n.children[k];
+        if (c.type == NODE_TYPE_SEPARATOR) {
+          for (int j=0; j < c.n_children; ++j, ++count) {
+            instance_compile_node(i, c.children[j], b, p);
+          }
+        } else {
+          instance_compile_node(i, c, b, p);
+          ++count;
+        }
+      }
+
+      bcode_buffer_append(b, OPCODE_LISTIFY, OPCODE_SIZE);
+      bcode_buffer_append(b, (uint8_t*)&count, sizeof(FzInt));
     }
   } else if (n.type == NODE_TYPE_KEYWORD) {
 
@@ -655,6 +1169,7 @@ void instance_compile_node(Instance *i, AstNode n, BcodeBuffer *b,
     case TOKEN_TYPE_LITERAL_FLOAT_DECIMAL:
     case TOKEN_TYPE_LITERAL_BOOLEAN:
     case TOKEN_TYPE_LITERAL_STRING:
+    case TOKEN_TYPE_LITERAL_NULL:
       instance_compile_literal(i, n, b, p);
       break;
     case TOKEN_TYPE_IDENTIFIER:
