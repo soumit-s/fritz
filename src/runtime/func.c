@@ -1,4 +1,8 @@
 #include "runtime/func.h"
+#include "runtime/class.h"
+#include "runtime/universal/method.h"
+
+const Value FUNC_ME_PROP_NAME = VALUE_CSTRING("me", 2);
 
 void func_create(Object *o, Object *p, Block b, Object *s) {
 	// An object of type Function consists
@@ -36,7 +40,7 @@ void func_create(Object *o, Object *p, Block b, Object *s) {
 	scope.key = value_string(to_string("scope"));
 	scope.value = value_object(s);
 
-	ObjectProperty props[4] = {params, info, native, scope};
+  ObjectProperty props[4] = {params, info, native, scope};
 
 	object_add_properties(o, props, 4);
 }
